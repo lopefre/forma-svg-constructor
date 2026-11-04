@@ -619,6 +619,7 @@ function App() {
         body: JSON.stringify({ systemPrompt, query }),
       })
 
+
       const responseText = await response.text()
       let payload
       try {
