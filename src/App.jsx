@@ -611,13 +611,15 @@ function App() {
 
       // ТЕПЕРЬ ШЛЕМ ЗАПРОС НА НАШ СОБСТВЕННЫЙ БЭКЕНД CLOUDFLARE
       // Относительный путь /api автоматически проксируется на функции Pages
-      const response = await fetch('/api', {
+      // Меняем путь строго на имя нового файла /api/generate
+      const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ systemPrompt, query }),
       })
+
 
 
       const responseText = await response.text()
