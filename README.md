@@ -1,16 +1,51 @@
-# React + Vite
+# Forma — SVG Иллюстратор (MVP)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Интеллектуальный конструктор изометрических иллюстраций, позволяющий автоматически и вручную собирать композиции под разные форматы.
 
-Currently, two official plugins are available:
+🔗 **Демо:** `[https://forma-svg-constructor.pages.dev/]`  
+📁 **Репозиторий:** `[https://github.com/lopefre/forma-svg-constructor]`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🏗 Архитектура и технические решения
 
-## React Compiler
+Проект построен на **React** и **Fabric.js** с фокусом на сохранение векторной природы SVG и изометрической 3D-геометрии.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Хранение и извлечение SVG-ассетов
 
-## Expanding the Oxlint configuration
+- **Файловая структура:** Ассеты строго типизированы и лежат в статических папках по паттерну `/svg/{size}/objects/{type}/{id}.svg`. Это позволяет легко масштабировать библиотеку без изменения логики кода.
+- **Каталогизация:** Массив из 10 базовых физических объектов динамически мапится в 40 уникальных компонентов (2 размера: `S/L` × 2 роли: `Main/Background`). Любой предмет может выступать и как главный герой сцены, и как фоновая монохромная деталь.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### 2. Динамическое перекрашивание (Без потери 3D)
+
+Стандартный метод `fabric.Object.set({ fill: color })` уничтожает сложную изометрическую светотень (градиенты и грани сплющиваются).  
+**Решение:**
+
+1. Файл загружается как сырой текст (`fetch() -> .text()`).
+2. Функция `prepareSvgString` использует регулярные выражения для замены HEX-цветов внутри исходного SVG-кода на основе выбранной палитры (Purple, Peach, Mint).
+3. Только после этого сформированная строка передается в `fabric.loadSVGFromString`.
+4. _Результат:_ Цвета меняются, а изометрический 3D-объем и структура слоев полностью сохраняются.
+
+### 3. Алгоритм композиции и Layout
+
+Вместо случайного разброса элементов реализована система **Editorial Layout Presets**:
+
+- Под каждый формат (1:1 Квадрат, 2:1 Баннер, 2:3 Сториз) заложены сетки позиционирования.
+- Главные объекты (`L`) получают Scale-фактор, делающий их доминантой (макро-план).
+- Композиция использует **Edge Bleed (вылет за край)**: элементы намеренно смещаются к границам и обрезаются через `canvas.clipPath`, создавая современный эффект "вырезки из большого мира", как в профессиональном дизайне.
+- Строгая изометрическая сортировка Z-index (объекты с меньшим `Y` рендерятся раньше объектов с большим `Y`).
+
+### 4. Генерация по метафоре
+
+Интеграция с Mistral API работает не вслепую, а по жестко заданному системному промпту (System Prompt):
+
+- ИИ выступает в роли "Арт-директора".
+- На вход подается только список из 10 _базовых_ предметов с их семантическими тегами.
+- ИИ возвращает JSON с четким распределением: 1 "Герой" (Hero), 1-2 "Детали" (Details) и Фоновые элементы. Фронтенд сам подбирает нужные SVG-варианты (`L` для героя, `S` для деталей), чтобы создать контраст масштабов.
+
+---
+
+## 🤖 Использованные AI-инструменты
+
+В процессе разработки применялись следующие AI-решения:
+
+1. **Claude 3.5 Sonnet / GitHub Copilot** — в качестве спарринг-партнера для проектирования архитектуры, написания логики React-компонентов и решения проблем с Fabric.js (в частности, разработка алгоритма текстового перекрашивания SVG перед рендером и математики изометрического позиционирования).
+2. **Mistral 7B (Mistral API `open-mistral-7b`)** — интегрирован непосредственно в продукт для NLP-анализа пользовательских метафор (например, "защита финансов") и семантического маппинга на доступный каталог 3D-объектов с возвратом структурированного JSON.
