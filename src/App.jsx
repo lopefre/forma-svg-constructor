@@ -613,7 +613,7 @@ function App() {
       // Относительный путь /api автоматически проксируется на функции Pages
       // Меняем путь строго на имя нового файла /api/generate
       // Меняем путь на точное имя файла бэкенда
-      const response = await fetch('/api', {
+      const response = await fetch('/generate-composition', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
