@@ -510,8 +510,23 @@ function App() {
         anchor = selectedPreset.hero
         scaleMult = selectedPreset.heroScale || 1.3
       } else {
-        // Детали рядом
-        anchor = selectedPreset.details[detailIdx % selectedPreset.details.length]
+        // Детали занимают слоты пресета; дополнительные распределяются вокруг центра.
+        if (detailIdx < selectedPreset.details.length) {
+          anchor = selectedPreset.details[detailIdx]
+        } else {
+          const overflowIndex = detailIdx - selectedPreset.details.length
+          const overflowCount = Math.max(
+            1,
+            components.filter((item) => item.type !== 'background' && item.size !== 'L').length
+              - selectedPreset.details.length
+          )
+          const angle = -Math.PI / 2 + (Math.PI * 2 * overflowIndex) / overflowCount
+          anchor = {
+            x: 0.5 + Math.cos(angle) * 0.34,
+            y: 0.5 + Math.sin(angle) * 0.34,
+          }
+          scaleMult = 0.8
+        }
         detailIdx++
       }
 
@@ -561,7 +576,7 @@ function App() {
     ))
   }
 
-  const handleGenerateByName = () => {
+  const handleGenerateByName = async () => {
     const queries = searchText.split(',').map((part) => part.trim()).filter(Boolean)
     if (queries.length === 0) {
       setMessage({ text: 'Введите названия компонентов через запятую.', type: 'error' })
@@ -581,9 +596,29 @@ function App() {
       return
     }
 
-    void addComponents(found, 'Не удалось найти компоненты по указанным названиям.').then((success) => {
-      if (success && missing.length > 0) setMessage({ text: `Добавлено: ${found.length}. Не найдены: ${missing.join(', ')}.`, type: 'info' })
-    })
+    // Первый объект становится главным, остальные — деталями той же композиции.
+    const compositionComponents = found.map((component, index) => (
+      COMPONENTS.find((item) => (
+        item.baseId === component.baseId
+        && item.size === (index === 0 ? 'L' : 'S')
+        && item.type === 'main'
+      ))
+    )).filter(Boolean)
+
+    setBusy(true)
+    try {
+      const success = await addComponents(compositionComponents, 'Не удалось создать композицию.')
+      if (success) {
+        const status = [`Создана композиция из ${compositionComponents.length} объектов.`]
+        if (missing.length > 0) status.push(`Не найдены: ${missing.join(', ')}.`)
+        setMessage({ text: status.join(' '), type: 'success' })
+      }
+    } catch (error) {
+      console.error('Ошибка создания композиции:', error)
+      setMessage({ text: error instanceof Error ? error.message : 'Не удалось создать композицию.', type: 'error' })
+    } finally {
+      setBusy(false)
+    }
   }
 
     const handleGenerateByMetaphor = async () => {
@@ -811,7 +846,7 @@ function App() {
               disabled={busy}
               className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50"
             >
-              Добавить на холст
+              {busy ? 'Создаём композицию...' : 'Создать композицию'}
             </button>
           </div>
 
