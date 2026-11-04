@@ -505,7 +505,7 @@ function App() {
       if (comp.type === 'background') {
         anchor = selectedPreset.bg[bgIdx % selectedPreset.bg.length]
         bgIdx++
-      } else if (comp.size === 'L') {
+      } else if (comp.compositionRole === 'hero' || (!comp.compositionRole && comp.size === 'L')) {
         // Главный герой крупно
         anchor = selectedPreset.hero
         scaleMult = selectedPreset.heroScale || 1.3
@@ -587,8 +587,11 @@ function App() {
     const missing = []
     for (const query of queries) {
       const component = findComponent(query)
-      if (component) found.push(component)
-      else missing.push(query)
+      if (!component) {
+        missing.push(query)
+      } else if (!found.some((item) => item.baseId === component.baseId)) {
+        found.push(component)
+      }
     }
 
     if (found.length === 0) {
@@ -599,6 +602,8 @@ function App() {
     setBusy(true)
     try {
       let heroId = found[0].baseId
+      const shouldUseBackground = useBackgroundObjects && found.length >= 3
+      const backgroundIds = new Set()
 
       if (found.length > 1) {
         const candidates = found.map((component) => {
@@ -607,8 +612,11 @@ function App() {
         })
         const systemPrompt = `Ты — арт-директор графического редактора. Распредели только перечисленные пользователем объекты по ролям для сбалансированной иллюстрации.
 Список объектов: ${JSON.stringify(candidates)}.
-Выбери ровно один наиболее подходящий по смыслу и визуальной важности главный объект в массив "hero". Все остальные объекты обязательно помести в массив "details" как второстепенные детали. Не добавляй и не исключай объекты; используй только указанные ID.
-Верни только JSON в формате: {"hero":["id"],"details":["id"]}.`
+Выбери ровно один наиболее подходящий по смыслу и визуальной важности главный объект в поле "hero".${shouldUseBackground
+    ? ' Выбери также 1-2 подходящих фоновых объекта в массив "background". Среди оставшихся объектов должны быть второстепенные детали.'
+    : ' Не выбирай фоновые объекты.'}
+Не добавляй и не исключай объекты; используй только указанные ID. Объекты, не указанные в "hero" или "background", станут второстепенными деталями.
+Верни только JSON в формате: {"hero":"id","background":["id"]}.`
 
         const response = await fetch('https://forma-ai-backend.nordensvetra.workers.dev/', {
           method: 'POST',
@@ -634,23 +642,49 @@ function App() {
 
         const selection = JSON.parse(cleanContent)
         const allowedIds = new Set(found.map((component) => component.baseId))
-        const selectedHero = Array.isArray(selection.hero)
-          ? selection.hero.find((id) => allowedIds.has(id))
-          : null
+        const selectedHero = typeof selection.hero === 'string'
+          ? (allowedIds.has(selection.hero) ? selection.hero : null)
+          : Array.isArray(selection.hero)
+            ? selection.hero.find((id) => allowedIds.has(id))
+            : null
         if (selectedHero) heroId = selectedHero
+
+        if (shouldUseBackground) {
+          const selectedBackgroundIds = Array.isArray(selection.background)
+            ? selection.background.filter((id) => allowedIds.has(id) && id !== heroId)
+            : typeof selection.background === 'string' && allowedIds.has(selection.background)
+              && selection.background !== heroId
+              ? [selection.background]
+              : []
+
+          const uniqueBackgroundIds = [...new Set(selectedBackgroundIds)]
+          uniqueBackgroundIds
+            .slice(0, Math.min(2, found.length - 2))
+            .forEach((id) => backgroundIds.add(id))
+        }
       }
 
-      const compositionComponents = found.map((component) => (
-        COMPONENTS.find((item) => (
+      if (shouldUseBackground && backgroundIds.size === 0) {
+        const fallbackBackground = found.find((component) => component.baseId !== heroId)
+        if (fallbackBackground) backgroundIds.add(fallbackBackground.baseId)
+      }
+
+      const compositionComponents = found.map((component) => {
+        const isHero = component.baseId === heroId
+        const isBackground = backgroundIds.has(component.baseId)
+        const catalogComponent = COMPONENTS.find((item) => (
           item.baseId === component.baseId
-          && item.size === (component.baseId === heroId ? 'L' : 'S')
-          && item.type === 'main'
+          && item.size === (isHero ? 'L' : 'S')
+          && item.type === (isBackground ? 'background' : 'main')
         ))
-      )).filter(Boolean)
+        return catalogComponent
+          ? { ...catalogComponent, compositionRole: isHero ? 'hero' : isBackground ? 'background' : 'detail' }
+          : null
+      }).filter(Boolean)
 
       const success = await addComponents(compositionComponents, 'Не удалось создать композицию.')
       if (success) {
-        const status = [`Создана композиция из ${compositionComponents.length} объектов.`]
+        const status = [`Создана композиция: 1 главный объект, ${compositionComponents.length - backgroundIds.size - 1} деталей и ${backgroundIds.size} фоновых объектов.`]
         if (missing.length > 0) status.push(`Не найдены: ${missing.join(', ')}.`)
         setMessage({ text: status.join(' '), type: 'success' })
       }
