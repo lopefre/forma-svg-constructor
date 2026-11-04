@@ -596,17 +596,58 @@ function App() {
       return
     }
 
-    // Первый объект становится главным, остальные — деталями той же композиции.
-    const compositionComponents = found.map((component, index) => (
-      COMPONENTS.find((item) => (
-        item.baseId === component.baseId
-        && item.size === (index === 0 ? 'L' : 'S')
-        && item.type === 'main'
-      ))
-    )).filter(Boolean)
-
     setBusy(true)
     try {
+      let heroId = found[0].baseId
+
+      if (found.length > 1) {
+        const candidates = found.map((component) => {
+          const baseObject = BASE_OBJECTS.find((item) => item.id === component.baseId)
+          return { id: component.baseId, name: baseObject.name, tags: baseObject.tags }
+        })
+        const systemPrompt = `Ты — арт-директор графического редактора. Распредели только перечисленные пользователем объекты по ролям для сбалансированной иллюстрации.
+Список объектов: ${JSON.stringify(candidates)}.
+Выбери ровно один наиболее подходящий по смыслу и визуальной важности главный объект в массив "hero". Все остальные объекты обязательно помести в массив "details" как второстепенные детали. Не добавляй и не исключай объекты; используй только указанные ID.
+Верни только JSON в формате: {"hero":["id"],"details":["id"]}.`
+
+        const response = await fetch('https://forma-ai-backend.nordensvetra.workers.dev/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ systemPrompt, query: queries.join(', ') }),
+        })
+
+        const responseText = await response.text()
+        let payload
+        try {
+          payload = JSON.parse(responseText)
+        } catch {
+          throw new Error(`Сервер вернул некорректный ответ (HTTP ${response.status}).`)
+        }
+
+        if (!response.ok) throw new Error(payload.error?.message || payload.error || 'Ошибка API.')
+
+        const content = payload.choices?.[0]?.message?.content
+        let cleanContent = typeof content === 'string' ? content.trim() : ''
+        if (cleanContent.startsWith('```')) {
+          cleanContent = cleanContent.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+        }
+
+        const selection = JSON.parse(cleanContent)
+        const allowedIds = new Set(found.map((component) => component.baseId))
+        const selectedHero = Array.isArray(selection.hero)
+          ? selection.hero.find((id) => allowedIds.has(id))
+          : null
+        if (selectedHero) heroId = selectedHero
+      }
+
+      const compositionComponents = found.map((component) => (
+        COMPONENTS.find((item) => (
+          item.baseId === component.baseId
+          && item.size === (component.baseId === heroId ? 'L' : 'S')
+          && item.type === 'main'
+        ))
+      )).filter(Boolean)
+
       const success = await addComponents(compositionComponents, 'Не удалось создать композицию.')
       if (success) {
         const status = [`Создана композиция из ${compositionComponents.length} объектов.`]
