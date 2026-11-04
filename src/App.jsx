@@ -586,17 +586,10 @@ function App() {
     })
   }
 
-  const handleGenerateByMetaphor = async () => {
+    const handleGenerateByMetaphor = async () => {
     const query = metaphor.trim()
     if (!query) {
       setMessage({ text: 'Опишите метафору или идею.', type: 'error' })
-      return
-    }
-
-    const key = import.meta.env.VITE_MISTRAL_API_KEY?.trim()
-
-    if (!key) {
-      setMessage({ text: 'API-ключ Mistral не найден в файле .env', type: 'error' })
       return
     }
 
@@ -616,21 +609,14 @@ function App() {
 
 Верни строго JSON: {"hero": ["id1"], "details": ["id2"], "background": ["id3"]}.`
 
-      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      // ТЕПЕРЬ ШЛЕМ ЗАПРОС НА НАШ СОБСТВЕННЫЙ БЭКЕНД CLOUDFLARE
+      // Относительный путь /api автоматически проксируется на функции Pages
+      const response = await fetch('/api', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${key}`,
         },
-        body: JSON.stringify({
-          model: 'open-mistral-7b',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: query },
-          ],
-          temperature: 0.3,
-          response_format: { type: 'json_object' },
-        }),
+        body: JSON.stringify({ systemPrompt, query }),
       })
 
       const responseText = await response.text()
@@ -638,10 +624,10 @@ function App() {
       try {
         payload = JSON.parse(responseText)
       } catch {
-        throw new Error(`Mistral вернул некорректный ответ (HTTP ${response.status}).`)
+        throw new Error(`Сервер вернул некорректный ответ (HTTP ${response.status}).`)
       }
 
-      if (!response.ok) throw new Error(payload.error?.message ?? 'Ошибка Mistral API.')
+      if (!response.ok) throw new Error(payload.error?.message || payload.error || 'Ошибка API.')
 
       const content = payload.choices?.[0]?.message?.content
       let cleanContent = typeof content === 'string' ? content.trim() : ''
@@ -682,13 +668,14 @@ function App() {
         setMessage({ text: `Скомпонована кадрированная сцена по сетке.`, type: 'success' })
       }
     } catch (error) {
-      console.error('Ошибка Mistral API:', error)
+      console.error('Ошибка генерации:', error)
       setMessage({ text: error instanceof Error ? error.message : 'Не удалось выполнить запрос.', type: 'error' })
     } finally {
       setIsLoading(false)
       setBusy(false)
     }
   }
+
 
   const handlePaletteChange = async (palette) => {
     setPaletteId(palette.id)
