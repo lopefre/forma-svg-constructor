@@ -2,8 +2,8 @@
 
 Интеллектуальный конструктор изометрических иллюстраций, позволяющий автоматически и вручную собирать композиции под разные форматы.
 
-🔗 **Демо:** `https://forma-svg-constructor.pages.dev/`  
-📁 **Репозиторий:** `https://github.com/lopefre/forma-svg-constructor`
+🔗 **Демо:** [https://forma-svg-constructor.pages.dev/] 
+📁 **Репозиторий:** [https://github.com/lopefre/forma-svg-constructor]
 
 ## 🏗 Архитектура и технические решения
 
