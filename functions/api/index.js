@@ -28,11 +28,12 @@ export async function onRequest(context) {
 
     const { systemPrompt, query } = await context.request.json();
 
+    // ДОЛЖНО БЫТЬ СТРОГО ТАК:
     const response = await fetch('https://mistral.ai', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${key.trim()}`,
+        Authorization: `Bearer ${key.trim()}`, // Проверьте, что ключ берется из VITE_MISTRAL_API_KEY
       },
       body: JSON.stringify({
         model: 'open-mistral-7b',
@@ -44,6 +45,7 @@ export async function onRequest(context) {
         response_format: { type: 'json_object' },
       }),
     });
+
 
     const data = await response.json();
 
