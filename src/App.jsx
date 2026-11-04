@@ -885,7 +885,7 @@ function App() {
                 disabled={busy || objectCount === 0}
                 className="rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-40"
               >
-                👯‍♂️ Дубл.
+                👯‍♂️ Дублировать
               </button>
 
               <div className="flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/60 p-1">
