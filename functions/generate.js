@@ -1,19 +1,19 @@
 export async function onRequestPost(context) {
   try {
-    // 1. Вытаскиваем секретный ключ из переменных окружения Cloudflare (бэкенд-часть)
+    // 1. Вытаскиваем секретный ключ из панели Cloudflare
     const key = context.env.MISTRAL_API_KEY;
 
     if (!key) {
       return new Response(
-        JSON.stringify({ error: 'API key not configured on Cloudflare backend' }), 
+        JSON.stringify({ error: 'API key (VITE_MISTRAL_API_KEY) not found in Cloudflare secrets' }), 
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // 2. Получаем тело запроса (метафору от фронтенда)
+    // 2. Получаем данные, которые прислал React
     const { systemPrompt, query } = await context.request.json();
 
-    // 3. Делаем безопасный запрос к Mistral с сервера
+    // 3. Делаем безопасный запрос к Mistral AI
     const response = await fetch('https://mistral.ai', {
       method: 'POST',
       headers: {
@@ -33,7 +33,7 @@ export async function onRequestPost(context) {
 
     const data = await response.json();
 
-    // 4. Возвращаем результат фронтенду
+    // 4. Возвращаем результат обратно во фронтенд
     return new Response(JSON.stringify(data), {
       status: response.status,
       headers: { 'Content-Type': 'application/json' },
