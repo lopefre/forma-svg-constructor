@@ -773,7 +773,7 @@ function App() {
             <textarea
               value={metaphor}
               onChange={(e) => setMetaphor(e.target.value)}
-              placeholder="Например: запуск проекта, бестселлер или безопасность финансов"
+              placeholder="Например: запуск проекта, бестселлер или креатив"
               rows={3}
               className="w-full resize-y rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
             />
