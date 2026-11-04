@@ -609,16 +609,14 @@ function App() {
 
 Верни строго JSON: {"hero": ["id1"], "details": ["id2"], "background": ["id3"]}.`
 
-      // ТЕПЕРЬ ШЛЕМ ЗАПРОС НА НАШ СОБСТВЕННЫЙ БЭКЕНД CLOUDFLARE
-      const response = await fetch('https://workers.dev', {
+      // Замените старый fetch на прямую ссылку к вашему воркеру
+      const response = await fetch('https://forma-ai-backend.nordensvetra.workers.dev/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ systemPrompt, query }),
-      }) //
-
-
+      })
 
       const responseText = await response.text()
       let payload
