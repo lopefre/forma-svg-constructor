@@ -1,19 +1,33 @@
-export async function onRequestPost(context) {
+export async function onRequest(context) {
+  // Обрабатываем OPTIONS-запрос (Preflight для браузера)
+  if (context.request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+
+  // Обрабатываем строго POST-запрос
+  if (context.request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
   try {
-    // 1. Вытаскиваем секретный ключ из панели Cloudflare
     const key = context.env.MISTRAL_API_KEY;
 
     if (!key) {
       return new Response(
-        JSON.stringify({ error: 'API key (VITE_MISTRAL_API_KEY) not found in Cloudflare secrets' }), 
+        JSON.stringify({ error: 'API key (VITE_MISTRAL_API_KEY) missing in Cloudflare dashboard' }), 
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // 2. Получаем данные, которые прислал React
     const { systemPrompt, query } = await context.request.json();
 
-    // 3. Делаем безопасный запрос к Mistral AI
     const response = await fetch('https://mistral.ai', {
       method: 'POST',
       headers: {
@@ -33,10 +47,12 @@ export async function onRequestPost(context) {
 
     const data = await response.json();
 
-    // 4. Возвращаем результат обратно во фронтенд
     return new Response(JSON.stringify(data), {
       status: response.status,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*' 
+      },
     });
 
   } catch (error) {
