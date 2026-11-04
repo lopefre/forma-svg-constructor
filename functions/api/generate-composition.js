@@ -1,35 +1,34 @@
-export async function onRequest(context) {
-  // Обрабатываем OPTIONS-запрос (Preflight для браузера)
-  if (context.request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
-  }
+// 1. ЯВНЫЙ ОБРАБОТЧИК ДЛЯ ПРОВЕРКИ БЕЗОПАСНОСТИ БРАУЗЕРА (Preflight OPTIONS)
+export async function onRequestOptions() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
 
-  // Принимаем только POST-запросы
-  if (context.request.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
-  }
-
+// 2. ЯВНЫЙ ОБРАБОТЧИК ДЛЯ ВАШЕГО POST ЗАПРОСА
+export async function onRequestPost(context) {
   try {
-    // Берем секрет из панели Cloudflare
+    // Вытаскиваем секрет из панели Cloudflare
     const key = context.env.MISTRAL_API_KEY;
 
     if (!key) {
       return new Response(
-        JSON.stringify({ error: 'API key (VITE_MISTRAL_API_KEY) missing in Cloudflare secrets' }), 
-        { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        JSON.stringify({ error: 'API key (MISTRAL_API_KEY) missing in Cloudflare secrets' }), 
+        { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        }
       );
     }
 
     const { systemPrompt, query } = await context.request.json();
 
-    // !!! ВОТ ЗДЕСЬ БЫЛА ОШИБКА. ТЕПЕРЬ ТУТ СТРОГО ПРАВИЛЬНЫЙ АДРЕС API !!!
+    // Запрос к реальному рабочему API Mistral
     const response = await fetch('https://mistral.ai', {
       method: 'POST',
       headers: {
@@ -60,7 +59,10 @@ export async function onRequest(context) {
   } catch (error) {
     return new Response(
       JSON.stringify({ error: error.message || 'Internal Server Error' }), 
-      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+      }
     );
   }
 }
