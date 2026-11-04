@@ -610,16 +610,14 @@ function App() {
 Верни строго JSON: {"hero": ["id1"], "details": ["id2"], "background": ["id3"]}.`
 
       // ТЕПЕРЬ ШЛЕМ ЗАПРОС НА НАШ СОБСТВЕННЫЙ БЭКЕНД CLOUDFLARE
-      // Относительный путь /api автоматически проксируется на функции Pages
-      // Меняем путь строго на имя нового файла /api/generate
-      // Меняем путь на точное имя файла бэкенда
-      const response = await fetch('/generate-composition', {
+      const response = await fetch('https://workers.dev', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ systemPrompt, query }),
-      })
+      }) //
+
 
 
       const responseText = await response.text()
